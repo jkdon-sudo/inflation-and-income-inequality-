@@ -1,0 +1,115 @@
+# Install and load necessary packages
+install.packages("lme4")
+install.packages("lmerTest")
+install.packages("MuMIn")
+
+library(lme4)
+library(lmerTest)
+library(MuMIn)
+
+pdata <- pdata.frame(disso_stats, index = c("country", "Year")) 
+quadratic_mixed_model <- lmer(inflation ~ inequality + I(inequality^2) + (1 | country) + (1 | Year), data = pdata)
+summary_quadratic <- summary(quadratic_mixed_model)
+print(summary_quadratic)  
+
+linear_mixed_model <- lmer(inflation ~ inequality + (1 | country) + (1 | Year), data = pdata)
+summary_linear <- summary(linear_mixed_model)
+print(summary_linear)  
+r_squared_quadratic <- r.squaredGLMM(quadratic_mixed_model)
+print(r_squared_quadratic)
+r_squared_linear <- r.squaredGLMM(linear_mixed_model)
+print(r_squared_linear)
+
+#BIC
+bic_quadratic <- BIC(quadratic_mixed_model)
+print(bic_quadratic)
+bic_linear <- BIC(linear_mixed_model)
+print(bic_linear)
+
+#inequality and GDP
+quadratic_mixed_model1 <- lmer(inequality ~ GDP + I(GDP^2) + (1 | country) + (1 | Year), data = pdata)
+summary_quadratic1 <- summary(quadratic_mixed_model1)
+print(summary_quadratic1)  
+linear_mixed_model1 <- lmer(inequality ~ GDP + (1 | country) + (1 | Year), data = pdata)
+summary_linear1 <- summary(linear_mixed_model1)
+print(summary_linear1)
+r_squared_quadratic1 <- r.squaredGLMM(quadratic_mixed_model1)
+print(r_squared_quadratic1)
+r_squared_linear1 <- r.squaredGLMM(linear_mixed_model1)
+print(r_squared_linear1)
+#BIC
+bic_quadratic1 <- BIC(quadratic_mixed_model1)
+print(bic_quadratic1)
+bic_linear1 <- BIC(linear_mixed_model1)
+print(bic_linear1)
+
+#inflation and GDP
+quadratic_mixed_model2 <- lmer(inflation ~ GDP + I(GDP^2) + (1 | country) + (1 | Year), data = pdata)
+summary_quadratic2 <- summary(quadratic_mixed_model2)
+print(summary_quadratic2)
+
+# Mixed-effect model for linear relationship with GDP as the IV and inflation as the DV
+linear_mixed_model2 <- lmer(inflation ~ GDP + (1 | country) + (1 | Year), data = pdata)
+summary_linear2 <- summary(linear_mixed_model2)
+
+print(summary_linear2)
+r_squared_quadratic2 <- r.squaredGLMM(quadratic_mixed_model2)
+print(r_squared_quadratic2)
+r_squared_linear2 <- r.squaredGLMM(linear_mixed_model2)
+print(r_squared_linear2)
+
+#BIC
+bic_quadratic2 <- BIC(quadratic_mixed_model2)
+print(bic_quadratic2)
+bic_linear2 <- BIC(linear_mixed_model2)
+print(bic_linear2)
+
+#inflation and unemployment
+quadratic_mixed_model3 <- lmer( Unemployment ~ inflation + I(inflation^2) + (1 | country) + (1 | Year), data = pdata)
+summary_quadratic3 <- summary(quadratic_mixed_model3)
+print(summary_quadratic3)
+
+# Mixed-effect model for linear relationship with Unemployment as the IV and inflation as the DV
+linear_mixed_model3 <- lmer(Unemployment ~ inflation + (1 | country) + (1 | Year), data = pdata)
+summary_linear3 <- summary(linear_mixed_model3)
+print(summary_linear3)
+r_squared_quadratic3 <- r.squaredGLMM(quadratic_mixed_model3)
+print(r_squared_quadratic3)
+r_squared_linear3 <- r.squaredGLMM(linear_mixed_model3)
+print(r_squared_linear3)
+
+#BIC
+bic_quadratic3 <- BIC(quadratic_mixed_model3)
+print(bic_quadratic3)
+bic_linear3 <- BIC(linear_mixed_model3)
+print(bic_linear3)
+
+#granger causality
+install.packages("vars")
+library(vars)
+ts <- ts(disso_stats[, c("inflation", "inequality")], start = min(disso_stats$Year), frequency = 1)
+lag_selection <- VARselect(ts, lag.max = 5, type = "const")
+optimal_lag <- lag_selection$selection["AIC(n)"]
+install.packages("lmtest")
+library(lmtest)
+granger_test_inflation_to_inequality <- grangertest(inequality ~ inflation, order = optimal_lag, data = disso_stats)
+granger_test_inequality_to_inflation <- grangertest(inflation ~ inequality, order = optimal_lag, data = disso_stats)
+
+
+#causal steps
+model1 <- lm(inequality ~ inflation + I(inflation^2), data = disso_stats)
+model2a <- lm(Unemployment ~ inflation, data = disso_stats)
+model2b <-lm( GDP ~ inflation + I(inflation^2), data = disso_stats)
+model3a <- lm(inequality ~ inflation + I(inflation^2) + Unemployment, data = disso_stats)
+model3b <- lm(inequality ~ inflation + I(inflation^2) + GDP + I(GDP^2), data = disso_stats)
+#mediation test
+install.packages("mediation")
+library(mediation)
+mediation_unemployment <- mediate(model.m = model2a, model.y = model3a,
+                                  treat = "inflation", mediator = "Unemployment",
+                                  boot = TRUE, sims = 1000)
+
+
+mediation_gdp <- mediate(model.m = model2b, model.y = model3b,
+                         treat = "inflation", mediator = "GDP",
+                         boot = TRUE, sims = 1000)
